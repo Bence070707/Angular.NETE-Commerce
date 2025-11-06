@@ -1,4 +1,5 @@
 using Core.Entities;
+using Core.Interfaces;
 using InfraStructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,18 +8,18 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ProductsController(StoreContext context) : ControllerBase
+public class ProductsController(IProductsRepository productsRepository) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+    public async Task<ActionResult<IReadOnlyList<Product>>> GetProducts(string? brand, string? type, string? sort)
     {
-        return await context.Products.ToListAsync();
+        return Ok(await productsRepository.GetProductsAsync(brand, type, sort));
     }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await context.Products.FindAsync(id);
+        var product = await productsRepository.GetProductByIdAsync(id);
         if (product == null)
         {
             return NotFound();
@@ -29,36 +30,27 @@ public class ProductsController(StoreContext context) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
     {
-        context.Products.Add(product);
-        await context.SaveChangesAsync();
-
-        return product;
+        productsRepository.AddProduct(product);
+        if (await productsRepository.SaveChangesAsync())
+        {
+            return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
+        }
+        return BadRequest("Hiba történt a termék létrehozásakor.");
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateProduct(int id, [FromBody]Product updatedProduct)
     {
-        if (id != updatedProduct.Id || !ProductExists(id))
+        if (id != updatedProduct.Id || !productsRepository.ProductExists(id))
         {
             return BadRequest("Nem létező termék azonosító vagy azonosító nem egyezik.");
         }
 
-        context.Entry(updatedProduct).State = EntityState.Modified;
+        productsRepository.UpdateProduct(updatedProduct);
 
-        try
+        if (!await productsRepository.SaveChangesAsync())
         {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!ProductExists(id))
-            {
-                return BadRequest("Nem létező termék azonosító.");
-            }
-            else
-            {
-                throw;
-            }
+            return BadRequest("Hiba történt a termék frissítésekor.");
         }
 
         return NoContent();
@@ -67,20 +59,32 @@ public class ProductsController(StoreContext context) : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
-        var product = await context.Products.FindAsync(id);
+        var product = await productsRepository.GetProductByIdAsync(id);
         if (product == null)
         {
             return BadRequest("Nem létező termék azonosító.");
         }
 
-        context.Products.Remove(product);
-        await context.SaveChangesAsync();
+        productsRepository.DeleteProduct(product);
+        if (await productsRepository.SaveChangesAsync())
+        {
+            return NoContent();
+        }
 
-        return NoContent();
+        return BadRequest("Hiba történt a termék törlésekor.");
     }
 
-    private bool ProductExists(int id)
+    [HttpGet("brands")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetBrands()
     {
-        return context.Products.Any(e => e.Id == id);
+        var brands = await productsRepository.GetBrandsAsync();
+        return Ok(brands);
+    }
+
+    [HttpGet("types")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetTypes()
+    {
+        var types = await productsRepository.GetTypesAsync();
+        return Ok(types);
     }
 }
