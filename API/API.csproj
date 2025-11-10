@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\InfraStructure\InfraStructure.csproj" />
   </ItemGroup>
 
