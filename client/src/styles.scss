@@ -25,6 +25,10 @@ html {
   ));
 }
 
+.match-input-height{
+  height: var(--mat-form-field-container-height) !important;
+}
+
 body {
   // Default the application to a light color theme. This can be changed to
   // `dark` to enable the dark color theme, or to `light dark` to defer to the
@@ -46,4 +50,8 @@ html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .container{
   @apply mx-auto max-w-screen-2xl px-6
+}
+
+.text-primary{
+  color: var(--mat-sys-primary) !important;
 }
